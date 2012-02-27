@@ -1,0 +1,36 @@
+{# RML test document}{init}
+This is a line of normal text.{feedD 16}{# feed half a space}
+{# test alignments
+}{left}left
+{center}center
+{right}right{center}
+{# test line spacings
+}this
+is
+{b}normal{/b}
+line
+spacing
+{lineSpace 16}
+This
+is
+16
+dots
+{lineSpace 64}
+This
+is
+64
+dots
+{b}This text is bold{/b}
+{u 1}underline 1
+{u 2}underline 2
+{u 0}
+{image star.png}
+{e H}tall
+{e W}wide
+{e HW}big{e}
+{i}inverted{/i}
+{ud}updown{/ud}
+{x7b}braces}
+{barcode UPC-A 031901907983}
+
+{# more to come}
