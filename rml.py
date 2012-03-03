@@ -2,7 +2,8 @@
 
 import sys
 from math import ceil
-from string import hexdigits
+import string
+import time
 
 # argparse is only for python 2.7
 from optparse import OptionParser
@@ -16,6 +17,7 @@ class IOClass:
         self.port = False
 
 myIO=IOClass()
+
 
 
 def main():
@@ -65,6 +67,13 @@ def parse(doc):
     cmd=""
     
     while(1):
+    
+        if myIO.port.inWaiting():
+            err(myIO.port.read(myIO.port.inWaiting()).encode('hex'))
+        
+        #if not doc.inWaiting():
+        #    continue;
+            
         c=doc.read(1) # read 1 char
         
         if c == "": # EOF
@@ -94,13 +103,18 @@ def parse(doc):
         
         # we'll allow characters 0x20 thru 0x7E and 0x0A (LF)
         # all others are ignored.
+        # is that what we really want?
         
         #print c
         if (ord(c)>=0x20 and ord(c)<=0x7E) or ord(c)==0x0A:
             # send the char! do eet!
+            
+            if ord(c)==0x0A:
+                time.sleep(.3)
+            
             devSend(c)
-    
-    
+            
+
 
 def parseArgs():
 
@@ -162,13 +176,17 @@ def handleCmd(command):
     
     # things that take one number
     if name in oneArg:
+        #info("oneArg!")
+        
         if len(cmd)==1:
             devSend(chr(oneArg[name]))
         if len(cmd)==2:
+            #info("arg="+str(int(cmd[1])))
             devSend(chr(int(cmd[1])))
         
         valid=True
 
+    # enlarge. This doesn't work (?)
     if name == 'e':
         h=0
         w=0
@@ -181,7 +199,7 @@ def handleCmd(command):
         
     
     # leftSpace has special parsing
-    if name == 'leftSpace':
+    if name == 'leftspace':
         if len(cmd)==1:
             devSend(chr(0));
         if len(cmd)==2:
@@ -189,46 +207,132 @@ def handleCmd(command):
 
     # barcode - more special
     if name == 'barcode':
-        if len(cmd)==3:
+        if len(cmd)>2:
         
             type=0 # type defaults to UPC-A
             
             if cmd[1].upper() in bcTypes:
                 type=bcTypes.index(cmd[1])
             
-            dat=cmd[2]
+            cmdSpl=command.split(' ',2)
             
+            dat=cmdSpl[2]
+            
+            
+            
+            # now we want to format the data depending on the format
+            
+            # only number chars
+            if type in [0,1,2,3,5,9,10]:
+                dat="".join([c for c in dat if c in string.digits])
+            
+            # CODE39
+            if type == 4:
+                dat="".join([c for c in dat if c in CODE39chars])
+            
+            # CODEBAR
+            if type == 6:
+                dat="".join([c for c in dat if c in CODEBARchars])
+
+            # CODE93
+            if type == 7:
+                pass # i'm unsure exactly what to allow. the doc suggests 0-127, 
+                # but wikipedia lists a more limited set, but perhaps with
+                #  special sequences for more chars?
+                # mostly used by Canada Post
+            
+            # CODE128 - any char - use hex?
+            if type == 8:
+                
+                # we want to allow for arbitary data, probably using hex,
+                # but that's annoying if you just want to normals ascii text.
+                # perhaps we should have an escape char for hex.
+                # the questions becomes - which charachter?
+                
+                
+            
+                pass
+            
+            # code93 and code128 take binary data in range 0-127.
+            # we should probably use hex input for this.
+            
+            # some things allow spaces: we should allow that too.
             
             info('barcode type='+str(type)+' data='+dat)
         
             # we'll use "format 2" syntax, with explicit length
-            devSend('\x1D\x6B'+str(type)+chr(len(dat))+dat)
+            devSend('\x1D\x6B'+chr(type+65)+chr(len(dat))+dat)
             
             # I think we should wait for the data to print
-            
-    if name == 'image':
+    
+    
+    if name == 'image' or name == 'imager':
         if len(cmd)>1:
             # allows spaces in the file name
-            doImage(command.split(' ',1)[1])
-
+            doImage(command.split(' ',1)[1],(name=='imager'))
+            
+            
+    # for raw hex
     if name[0] == 'x':
         # no other commands can start with x
         
         dat=command.upper();
         
         # remove things that aren't hex digits
-        dat="".join([c for c in dat if c in hexdigits])
+        dat="".join([c for c in dat if c in string.hexdigits])
         
         # pad with 0 if necessary
         if len(dat)%2==1:
             dat=dat+'0'
         
-        info("eXplicit heX: "+dat)
+        info("raw hex: "+dat)
         
         devSend(dat.decode('hex'))
+
+    # so 'style' is weid.
+    # the style command has 6 properties
+    if name=='style':
+        c=[cm.lower() for cm in cmd]
+        
+        tall='tall' in c or 'big' in c
+        wide='big' in c
+        inv= 'i' in c
+        em = 'em' in c
+        strike = 'strike' in c
+        ud = 'ud' in c
+        
+        mode=(inv<<1)+(ud<<2)+(em<<3)+(tall<<4)+(wide<<5)+(strike<<6)
+        
+        devSend('\x1b\x21'+chr(mode))
+
+    # barcode text location
+    if name=='bcloc':
+        c=[cm.lower() for cm in cmd]
+        
+        # numbers are for backward compatibility
+        above='above' in c or '1' in c or '3' in c
+        below='below' in c or '2' in c or '3' in c
+        
+        loc=above*1+below*2
+        
+        devSend(chr(loc))
+        
+        
+
+    #     'heat':('\x1B\x37'    ,'heat control'),
+    #  'density':('\x12\x23'    ,'density control'),
+
+    if name=='heat':
+        if len(cmd)==4:
+            devSend('\x1B\x37'+chr(int(cmd[1]))+chr(int(cmd[2]))+chr(int(cmd[3])))
+
+    if name=='density':
+        if len(cmd)==3:
+            
+            devSend('\x12\x23'+chr(int(cmd[1])+(int(cmd[2])<<4)))
     
 
-def doImage(path):
+def doImage(path,rot):
     try:
         from PIL import Image, ImageOps
     except:
@@ -242,9 +346,13 @@ def doImage(path):
         return
     
 
-    # convert to greyscale, invert, convert to B+W
-    img=ImageOps.invert(img.convert('L')).convert('1')
+    # convert to greyscale, invert
+    img=ImageOps.invert(img.convert('L'))
     
+    if rot:
+        img=img.rotate(90)
+        
+        
     # figure out the desired W and H
     
     if img.size[0]<=384:
@@ -256,10 +364,14 @@ def doImage(path):
         # scale it down to the max
         img=img.resize((384,img.size[1]*384/img.size[0]))
     
-    img.show()
+    
+    # if verbose, show the image.
+    if myIO.verbose:
+        ImageOps.invert(img).convert('1').show()
     
     # stringify
-    imgStr=img.tostring()
+    imgStr=img.convert('1').tostring()
+    
     
     info(path+' '+str(img.size))
     
@@ -267,7 +379,7 @@ def doImage(path):
     devSend('\x1D\x76\0\0'+twoBytes(img.size[0]/8)+twoBytes(img.size[1])+imgStr)
     
     # I think we should wait for the data to send/print
-    
+    time.sleep(6)
 
 # some commands take a number (n) as two bytes (nL nH)
 def twoBytes(num):
@@ -287,69 +399,66 @@ def err(s):
 
 # send data to printer
 def devSend(s):
-    #err(s)
     if not myIO.dry: # (wet?)
         myIO.port.write(s)
-        #sys.stdout.write(s)
+
 
 # commands that map directly to device commands
 theCommands={
-    'feedL':('\x1B\x64'    ,'feed (lines)'),
-    'feedD':('\x1B\x4A'    ,'feed (dots)'),
+    'feedl':('\x1B\x64'    ,'feed (lines)'),
+    'feedd':('\x1B\x4A'    ,'feed (dots)'),
     
-'lineSpace':('\x1B\x33'    ,'line space'),
-'leftSpace':('\x1D\x4C'    ,'left space'),
+'linespace':('\x1B\x33'    ,'line space'),
+'leftspace':('\x1D\x4C'    ,'left space'),
 
    'left'  :('\x1B\x61\x00','align left'),
    'center':('\x1B\x61\x01','align center'),
    'right' :('\x1B\x61\x02','align right'),
 
-        'b':('\x1B\x20\x01','bold'),
-       '/b':('\x1B\x20\x00','un-bold'),
+'charspace':('\x1B\x20'    ,'charachter space'),
 
-#        'b':('\x1B\x45\x01','bold'),
-#       '/b':('\x1B\x45\x00','un-bold'),
+        'b':('\x1B\x45\x01','bold'),
+       '/b':('\x1B\x45\x00','un-bold'),
 
-        'w':('\x1B\x0B'    ,'wide'),
-       '/w':('\x1B\x14'    ,'un-wide'),
+# wide is weird. - maybe it's for special double-wide chars.
+     'wide':('\x1B\x0B'    ,'wide'),
+    '/wide':('\x1B\x14'    ,'un-wide'),
     
        'ud':('\x1B\x7B\x01','updown'),
       '/ud':('\x1B\x7B\x00','un-updown'),
     
-        'i':('\x1D\x42\x01','invert'),
-       '/i':('\x1D\x42\x00','un-invert'),
+      'inv':('\x1D\x42\x01','invert'),
+     '/inv':('\x1D\x42\x00','un-invert'),
     
-        'u':('\x1B\x27'    ,'underline'),
+        'u':('\x1B\x2D'    ,'underline'),
         
-        'e':('\x1D\x21','enlarge'),
-#        'e':('\x1D\x21\x00','no enlarge'),
-#       'eh':('\x1D\x21\x01','enlarge H'),
-#       'ew':('\x1D\x21\x10','enlarge W'),
-#      'ehw':('\x1D\x21\x11','enlarge H & W'),
+        'e':('\x1D\x21'    ,'enlarge'),
 
   'charset':('\x1B\x52'    ,'charachter set'),
 'codetable':('\x1B\x74'    ,'code table'),
 
-    'bcLoc':('\x1D\x48'    ,'barcode text location'),
-      'bcH':('\x1D\x68'    ,'barcode height'),
-      'bcW':('\x1D\x77'    ,'barcode width'),
-  'bcSpace':('\x1D\x78'    ,'barcode left space'),
+    'bcloc':('\x1D\x48'    ,'barcode text location'),
+      'bch':('\x1D\x68'    ,'barcode height'),
+      'bcw':('\x1D\x77'    ,'barcode width'),
+  'bcspace':('\x1D\x78'    ,'barcode left space'),
 
- 'testPage':('\x12\x54'    ,'test page'),
+     'init':('\x1B\x40'    ,'initialize'),
+ 'testpage':('\x12\x54'    ,'test page'),
 }
 
 # commands that take one argument, and the default value
 oneArg={
    'u':0,
-   'feedL':0,
-   'feedD':0,
-   'lineSpace':0,
+   'feedl':0,
+   'feedd':0,
+   'linespace':0,
    'charset':0,
    'codetable':0,
-   'bcLoc':0,
-   'bcH':50,
-   'bcW':3,
-   'bcSpace':0,
+#   'bcloc':0,
+   'bch':50,
+   'bcw':2,
+   'bcspace':0,
+   'charspace':0
 }
 
 # barcode types
@@ -366,6 +475,9 @@ bcTypes=[
     'CODE11',
     'MSI'
 ]
+
+CODE39chars=string.digits+string.uppercase+' $%+'
+CODEBARchars=string.digits+string.uppercase+' +'
 
 
 # go.

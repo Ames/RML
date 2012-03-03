@@ -17,9 +17,25 @@ http://bildr.org/2011/08/thermal-printer-arduino/
 http://tronixstuff.wordpress.com/2011/07/08/tutorial-arduino-and-a-thermal-printer/
 
 
+
+--- printing and metrics ---
+
+The paper is 57mm (~2.25") wide.
+Printable width is 48mm (~1.9").
+
+Print resolution is 8 dots/mm, giving a total width of 384 dots.
+
+The standard font is 12x24; 384/12=32 chars per line
+
+of course this is affected by margins, charachter size and spacing, 
+
+the printer linewaps, but doesn't respect word breaks,
+so best to manually line wrap.
+
+
+
 --- format ---
 
-header? probably not. would specify print params, etc.
 
 Most text is sent verbatum
 special commands are wrapped in curly braces: {command}
@@ -41,8 +57,8 @@ the interpreter will worry about the details.
 some commands with have arguments: {cmd arg1 ...}
 
 
-it's unclear at this point whether the printer automatically line wraps.
-I will assume no.
+
+
 
 
 
@@ -57,6 +73,7 @@ FF do we want a cmd for this? {ff}
 use {x DEAD BEEF} to send raw data (hex)
  (any hex char after the x is used)
 
+
 use {x7B} to make "{"
 
  --- commands ---
@@ -65,13 +82,14 @@ use {x7B} to make "{"
  
   {feedL n} print and feed n lines
   {feedD n} print and feed n dots
-    
+  
   {lineSpace [n]} set line spacing to n dots. no argument for default (32)
   
   {(left,center,right)} set alignment
   
   {leftSpace n} set left spacing (unit:0.125mm for now) (why does the spec have two cmds for this?)
 
+  {charSpace n} set space between charachters, in dots (ESC SP)
 
    "Set left blank char nums" (ESC B)
   
@@ -83,7 +101,17 @@ use {x7B} to make "{"
     Double Width
     Deleteline     (what is this?) - delete text from the buffer?
   perhaps a commands called soemthing like:
-  {style [arg1 [arg2 [...]]]} 
+  
+  
+  
+  {style [tall | big] [inv] [ud] [b] [strike]}
+    tall  - tall text
+    big   - big text (tall and wide)
+    inv   - inverted (white on black)
+    ud    - upside-down
+    b     - bold?
+    strike- "deleteline", a strange double-strikethrough effect
+  
   
   What is "Set left blank char nums"?  (maybe like leftspace, but in chars)
   
@@ -92,17 +120,29 @@ use {x7B} to make "{"
   if they all turn out to be there same, perhaps they should be combined?
   
   
-  {b}  {/b}     bold, un-bold  (why are there two commands: (ESC E) and (ESC SP)
-  {w}  {/w}     wide, un-wide
-  {ud} {/ud}    upside-down, un-ud
-  {i}  {/i}     (invert) (white on black), un-invert
-  {u n} underline width. (0=none (default), 1=thin, 2=thick)
+  character attributes:
+    there are two ways of setting things.
+    theoretically, things can either be set individually, or all at once
+    
+  
+  {b}   {/b}     bold, un-bold  (ESC E)
+  {ud}  {/ud}    upside-down, un-ud -- success
+  {inv} {/inv}   (invert) (white on black), un-invert -- success
+  {u n}          underline width. (0=none (default), 1=thin, 2=thick) -- fail
+  
+  {wide}{/wide}  wide, un-wide -- fail
+
   
   {charset n}   select charachter set n (see manual)
   {codetable n} 0:437 1:850 (see manual)
 
+
+  the enlarge command doesn't seem to do anything
+   either i'm overlooking something, my printer is weird, or everyone is crazy.
   {e [h] [w]} enlarges text width or height. ({e} is no enlarge)
         e.g. "{e h}", "{e HW}", or "{e w h}"
+  
+
 
 do we care about user-defined chars?  maybe. maybe later.
 
@@ -121,19 +161,20 @@ bar codes have the following properties:
   it'd be nice to be able to optionally set these options
   
   {bcH n}      set height to n dots (defaults to 50)
-  {bcW n}      set width (2 or 3) (defaults to 3)
+  {bcW n}      set width (2 or 3) (defaults to 2)
   {bcSpace n}  set left space
+  {bcLoc n} set text location (0:none 1:above 2:below 3:both)
   {barcode type data} make a barcode with specified data
   
   barcode types:
     UPC-A
-    UPC-E
+    UPC-E  --  i haven't gotten this to work…
     EAN13
     EAN8
     CODE39
     I25
     CODEBAR
-    CODE93
+    CODE93  -- this doesn't actually take all charachters
     CODE128
     CODE11
     MSI
@@ -143,12 +184,23 @@ bar codes have the following properties:
 
 
 printing parameters? maybe some of them.
-    "Setting Control Parameter Command" (ESC 7) 
+     
     "Sleep parameter" (ESC 8)
-    "Set printing density" (DC2 #)
+    
+    {heat n m k} "Setting Control Parameter Command" (ESC 7)
+        n - max printing dots - unit(8) - default to 7 (64 dots)
+        m - heating time - unit(10us) - default to 80 (800us)
+        k - heating interval - unit(10us) - defaults to 2 (20us)
+    
+    {heat 3 240 2} seems to make pretty good graphics
+    
+    
+    {density n m} "Set printing density" (DC2 #)
+        n - printing density = .5+.05*n
+        m - printing break time = 250us*m
     
 test page - why not?
-    {testPage}
+    {testPage} -- fail?
 
 bitmap images.
   
@@ -202,11 +254,15 @@ bitmap images.
   {image file.png}
     there might be max dimensions: I guess max width is 384
     there can't be '}' in the filename
+  {imageR file.png}
+    rotates the image 90˚
   
   {imageFull file.png}
     do we want this?
       basically, it would force the image to be 384 wide; 
         
+  
+  
   
 that's basically that.
 
