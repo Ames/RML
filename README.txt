@@ -1,10 +1,15 @@
 
-
 Receipt Markup Language (RML)
 
 not to be confused with any other R* Markup Language
 
 defines a document syntax for printing to a Mini Thermal Printer
+
+
+Please note: this document is basically my notes; I can't guarantee correctness
+ of anything here. Much of it was written before the the program.
+ See the online doc page, or read the source.
+http://www.sccs.swarthmore.edu/users/12/abiele1/RML/
 
 
  --- links ---
@@ -27,9 +32,9 @@ Print resolution is 8 dots/mm, giving a total width of 384 dots.
 
 The standard font is 12x24; 384/12=32 chars per line
 
-of course this is affected by margins, charachter size and spacing, 
+of course this is affected by margins, character size and spacing, 
 
-the printer linewaps, but doesn't respect word breaks,
+the printer line-waps, but doesn't respect word breaks,
 so best to manually line wrap.
 
 
@@ -37,7 +42,7 @@ so best to manually line wrap.
 --- format ---
 
 
-Most text is sent verbatum
+Most text is sent verbatim
 special commands are wrapped in curly braces: {command}
 
 There are several different kinds of commands.
@@ -51,7 +56,7 @@ The docs specify the following categories:
   Bar Code
   Board Para
 
-RML commands will not necissarily map directly to printer commands;
+RML commands will not necessarily map directly to printer commands;
 the interpreter will worry about the details.
 
 some commands with have arguments: {cmd arg1 ...}
@@ -60,11 +65,9 @@ some commands with have arguments: {cmd arg1 ...}
 
 
 
-
-
 comments: {#...}
 
-tab charachters will use the printer's tab stops (do we also want a cmd for this?)
+tab characters will use the printer's tab stops (do we also want a cmd for this?)
 LF will do LF
 TAB will to TAB (HT)
 CR ignored
@@ -133,7 +136,7 @@ use {x7B} to make "{"
   {wide}{/wide}  wide, un-wide -- fail
 
   
-  {charset n}   select charachter set n (see manual)
+  {charset n}   select character set n (see manual)
   {codetable n} 0:437 1:850 (see manual)
 
 
@@ -281,6 +284,8 @@ flags:
   -v         verbose
   -q         quiet
   -t         test (parse file, bit don't actually send any commands)
+
+I haven't implemented the following. Maybe later:
   -s         show device status and exit (normally prints info unless -q)
 
 

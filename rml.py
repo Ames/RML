@@ -137,9 +137,9 @@ def parseArgs():
                       action="store_true", dest="dry", default=False,
                       help="don't send to serial")
     
-    parser.add_option("-s", "--status",
-                      action="store_true", dest="doStatus", default=False,
-                      help="show device status and exit")
+#    parser.add_option("-s", "--status",
+#                      action="store_true", dest="doStatus", default=False,
+#                      help="show device status and exit")
     
     return parser.parse_args()
 
