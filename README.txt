@@ -92,7 +92,7 @@ use {x7B} to make "{"
   
   {leftSpace n} set left spacing (unit:0.125mm for now) (why does the spec have two cmds for this?)
 
-  {charSpace n} set space between charachters, in dots (ESC SP)
+  {charSpace n} set space between characters, in dots (ESC SP)
 
    "Set left blank char nums" (ESC B)
   
@@ -177,7 +177,7 @@ bar codes have the following properties:
     CODE39
     I25
     CODEBAR
-    CODE93  -- this doesn't actually take all charachters
+    CODE93  -- this doesn't actually take all characters
     CODE128
     CODE11
     MSI
@@ -211,7 +211,7 @@ bitmap images.
   there are a few methods for printing images.
   
   
-  the first method is for small images, e.g. for special charachters
+  the first method is for small images, e.g. for special characters
   
       "Select bit-image mode" (ESC *)
         loads up to 1024 bytes into memory, sets a mode (8/24 dots, 102/203 dpi)
