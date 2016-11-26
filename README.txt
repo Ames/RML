@@ -6,6 +6,17 @@ not to be confused with any other R* Markup Language
 defines a document syntax for printing to a Mini Thermal Printer
 
 
+Usage: rml.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  -f FILE, --file=FILE  input file (default to stdin)
+  -p PORT, --port=PORT  serial device (default to stdout)
+  -b BAUD, --baud=BAUD  baud rate (default to 19200)
+  -v, --verbose         display extra info
+  -t, --test            don't send to serial
+
+
 Please note: this document is basically my notes; I can't guarantee correctness
  of anything here. Much of it was written before the the program.
  See the online doc page, or read the source.
